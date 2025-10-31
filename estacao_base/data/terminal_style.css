@@ -1,0 +1,80 @@
+/* ============================================= */
+/* CSS DO COMPONENTE TERMINAL PITUBAS (ISOLADO)  */
+/* ============================================= */
+
+/* O contêiner principal que define o tamanho e a estrutura. */
+.pitubas-terminal-component {
+    /* Dimensões */
+    width: 100%; /* Ocupa a largura do seu container pai */
+    max-width: 900px; /* Limite máximo de largura */
+    height: 450px; /* ALTURA FIXA E TOTAL DO COMPONENTE */
+
+    /* Estrutura Flexbox para organizar o header e a área de logs */
+    display: flex;
+    flex-direction: column;
+
+    /* Estilos Visuais */
+    border: 1px solid #444;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    font-family: sans-serif; /* Uma fonte padrão para o componente */
+    margin: 20px 0; /* Espaçamento para não colar em outros elementos */
+}
+
+/* O cabeçalho do terminal */
+.pitubas-terminal-component .pt-header {
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    padding: 10px 15px;
+    border-bottom: 1px solid #555;
+    border-top-left-radius: inherit; /* Herda o arredondamento do pai */
+    border-top-right-radius: inherit;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* Impede que o header encolha */
+}
+
+/* Título dentro do cabeçalho */
+.pitubas-terminal-component .pt-title {
+    margin: 0;
+    font-size: 1em;
+    font-weight: bold;
+}
+
+/* Botão de download */
+.pitubas-terminal-component .pt-download-btn {
+    background-color: #0088cc;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+}
+
+.pitubas-terminal-component .pt-download-btn:hover {
+    background-color: #006699;
+}
+
+/* A área de exibição dos logs (PARTE MAIS IMPORTANTE) */
+.pitubas-terminal-component .pt-log-display {
+    /* Cor e Fonte */
+    background-color: #000000; /* FUNDO PRETO */
+    color: #00ff41; /* Texto verde */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14px;
+
+    /* Layout e Scroll (A SOLUÇÃO) */
+    flex-grow: 1; /* Faz esta área ocupar todo o espaço vertical disponível */
+    overflow-y: auto; /* CRIA A BARRA DE ROLAGEM VERTICAL QUANDO NECESSÁRIO */
+    
+    /* Estilos Adicionais */
+    padding: 15px;
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
