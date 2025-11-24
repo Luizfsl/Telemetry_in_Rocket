@@ -4,4 +4,7 @@
 
 ### Scripts
     -> Aqui produz um fake lora para testar a comunicação
+
+### Plugins
+    -> Aqui tem a extensão de mobilidade dos nós do Contiki/Cooja
     
