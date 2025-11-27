@@ -12,20 +12,20 @@
     <motedelay_us>1000000</motedelay_us>
     <radiomedium>
       org.contikios.mrm.MRM
-      <rt_refrac_coefficient value="0.0" />
-      <system_gain_mean value="12.0" />
-      <frequency value="915.0" />
-      <snr_threshold value="-20.0" />
-      <rt_max_refractions value="0" />
-      <tx_power value="30.0" />
-      <bg_noise_var value="3.0" />
-      <bg_noise_mean value="-110.0" />
-      <rt_reflec_coefficient value="0.0" />
-      <rt_diffr_coefficient value="0.0" />
       <rt_max_reflections value="0" />
+      <system_gain_mean value="12.0" />
+      <rt_refrac_coefficient value="0.0" />
+      <bg_noise_mean value="-110.0" />
       <obstacle_attenuation value="0.0" />
+      <rt_reflec_coefficient value="0.0" />
       <rx_sensitivity value="-147.0" />
       <system_gain_var value="2.0" />
+      <tx_power value="30.0" />
+      <frequency value="915.0" />
+      <bg_noise_var value="3.0" />
+      <snr_threshold value="-20.0" />
+      <rt_diffr_coefficient value="0.0" />
+      <rt_max_refractions value="0" />
       <obstacles />
     </radiomedium>
     <events>
@@ -75,8 +75,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>5166.784374958656</x>
-        <y>-42961.27142467331</y>
+        <x>-6446.99347991202</x>
+        <y>125.73703228357772</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -93,8 +93,8 @@
       <breakpoints />
       <interface_config>
         org.contikios.cooja.interfaces.Position
-        <x>-201.53255194588138</x>
-        <y>172.65849230444883</y>
+        <x>-8359.932805943992</x>
+        <y>-0.007146796558355845</y>
         <z>0.0</z>
       </interface_config>
       <interface_config>
@@ -111,7 +111,7 @@
   <plugin>
     org.contikios.cooja.plugins.SimControl
     <width>280</width>
-    <z>0</z>
+    <z>5</z>
     <height>160</height>
     <location_x>400</location_x>
     <location_y>0</location_y>
@@ -121,16 +121,16 @@
     <plugin_config>
       <moterelations>true</moterelations>
       <skin>org.contikios.cooja.plugins.skins.IDVisualizerSkin</skin>
-      <skin>org.contikios.cooja.plugins.skins.GridVisualizerSkin</skin>
       <skin>org.contikios.cooja.plugins.skins.TrafficVisualizerSkin</skin>
       <skin>org.contikios.mrm.MRMVisualizerSkin</skin>
-      <viewport>0.004673459300362462 0.0 0.0 0.004673459300362462 212.9351156823092 218.92150593723971</viewport>
+      <skin>org.contikios.cooja.plugins.skins.GridVisualizerSkin</skin>
+      <viewport>0.020095019561568256 0.0 0.0 0.020095019561568256 377.85779913323375 362.0891492716425</viewport>
     </plugin_config>
     <width>400</width>
-    <z>1</z>
+    <z>2</z>
     <height>713</height>
-    <location_x>1</location_x>
-    <location_y>1</location_y>
+    <location_x>2</location_x>
+    <location_y>-2</location_y>
   </plugin>
   <plugin>
     org.contikios.cooja.plugins.LogListener
@@ -140,7 +140,7 @@
       <coloring />
     </plugin_config>
     <width>1320</width>
-    <z>2</z>
+    <z>4</z>
     <height>553</height>
     <location_x>400</location_x>
     <location_y>160</location_y>
@@ -158,7 +158,7 @@
     <width>1720</width>
     <z>3</z>
     <height>262</height>
-    <location_x>0</location_x>
+    <location_x>3</location_x>
     <location_y>718</location_y>
   </plugin>
   <plugin>
@@ -168,25 +168,18 @@
       <decorations>true</decorations>
     </plugin_config>
     <width>1040</width>
-    <z>4</z>
+    <z>0</z>
     <height>160</height>
     <location_x>680</location_x>
     <location_y>0</location_y>
   </plugin>
   <plugin>
-    org.contikios.cooja.plugins.RadioLogger
-    <plugin_config>
-      <split>210</split>
-      <formatted_time />
-      <showdups>false</showdups>
-      <hidenodests>false</hidenodests>
-    </plugin_config>
-    <width>500</width>
-    <z>-1</z>
-    <height>300</height>
-    <location_x>31</location_x>
-    <location_y>31</location_y>
-    <minimized>true</minimized>
+    org.contikios.cooja.plugins.SimControl
+    <width>280</width>
+    <z>1</z>
+    <height>160</height>
+    <location_x>400</location_x>
+    <location_y>0</location_y>
   </plugin>
 </simconf>
 

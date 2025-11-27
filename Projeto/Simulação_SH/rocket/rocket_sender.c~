@@ -1,0 +1,135 @@
+#include "contiki.h"
+#include "net/rime/rime.h"
+#include "random.h"
+#include "dev/leds.h"
+#include <stdio.h>
+#include <string.h>
+
+/* * Configuração: Intervalo de envio. 
+ * Para LoRa, idealmente seria maior (ex: 5s ou 10s), mas para teste usamos 2s.
+ */
+#define SEND_INTERVAL (CLOCK_SECOND * 2)
+
+/* Tamanho do buffer para o JSON. O limite do 802.15.4 é ~127 bytes. */
+#define MAX_PAYLOAD_LEN 100 
+
+/* Estrutura para armazenar os valores brutos antes de converter */
+typedef struct {
+    int16_t ax, ay, az;       // Acelerômetro
+    int16_t roll, pitch, yaw; // Giroscópio
+    int16_t temp;             // Temperatura
+    uint32_t press;           // Pressão
+    int16_t alt;              // Altitude
+    int16_t seq;              // Sequência
+} RocketSensors;
+
+PROCESS(rocket_sender_process, "Rocket Sender Process");
+AUTOSTART_PROCESSES(&rocket_sender_process);
+
+static struct broadcast_conn bc;
+
+static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {
+    // Foguete apenas transmite
+}
+static const struct broadcast_callbacks broadcast_call = { broadcast_recv };
+
+/* * Função que simula a física do voo e preenche a estrutura 
+ * (Substitui as bibliotecas mpu.get... e mpl.get...)
+ */
+void simular_leitura_sensores(RocketSensors *data, int tempo) {
+    static float s_alt = 0;
+    static float s_vel = 0;
+    static int fase = 0; // 0=Solo, 1=Subida, 2=Descida
+
+    // --- LÓGICA DE SIMULAÇÃO ---
+    // Fase 1: Motor ligado (0 a 40 ticks)
+    if (tempo < 40) {
+        fase = 1;
+        data->az = 2500 + (random_rand() % 400); // ~2.5g de aceleração
+        s_vel += 12.0;                           // Velocidade subindo rápido
+        
+        // Vibração aleatória
+        data->ax = (random_rand() % 100) - 50;
+        data->ay = (random_rand() % 100) - 50;
+
+        // Foguete apontando para cima (Pitch ~90)
+        data->roll = (random_rand() % 5);
+        data->pitch = 88 + (random_rand() % 4);
+        data->yaw = 0;
+    } 
+    // Fase 2: Queda / Paraquedas
+    else {
+        fase = 2;
+        data->az = 980; // ~1g
+        s_vel -= 4.0;   // Desacelerando
+        
+        data->ax = (random_rand() % 20) - 10;
+        data->ay = (random_rand() % 20) - 10;
+
+        // Caindo e girando
+        data->roll = random_rand() % 360;
+        data->pitch = random_rand() % 90;
+        data->yaw = (data->yaw + 10) % 360;
+    }
+
+    // Atualiza Altitude
+    s_alt += s_vel;
+    if (s_alt < 0) s_alt = 0;
+    data->alt = (int16_t)s_alt;
+
+    // Física da Atmosfera (Simplificada)
+    data->press = 101325 - (data->alt * 12); // Pressão cai com altura
+    data->temp = 30 - (data->alt / 150);     // Fica mais frio no alto
+}
+
+PROCESS_THREAD(rocket_sender_process, ev, data)
+{
+    static struct etimer periodic_timer;
+    static int seq_count = 0;
+    static RocketSensors sensors; // Armazena os dados
+
+    PROCESS_EXITHANDLER(broadcast_close(&bc);)
+    PROCESS_BEGIN();
+
+    printf("[Rocket] Iniciando TX LoRa Simulada (Saida JSON)...\n");
+
+    broadcast_open(&bc, 129, &broadcast_call);
+    etimer_set(&periodic_timer, SEND_INTERVAL);
+
+    while(1) {
+        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
+        seq_count++;
+        sensors.seq = seq_count;
+
+        /* 1. GERA OS DADOS (Simulação) */
+        simular_leitura_sensores(&sensors, seq_count);
+
+        /* * 2. FORMATA COMO JSON 
+         * Formato compacto para economizar bytes:
+         * {"s":1,"a":[x,y,z],"g":[r,p,y],"e":[alt,temp,press]}
+         * s=seq, a=acc, g=gyro/orient, e=env
+         */
+        char json_buffer[MAX_PAYLOAD_LEN];
+        
+        snprintf(json_buffer, sizeof(json_buffer), 
+                 "{\"s\":%d,\"a\":[%d,%d,%d],\"g\":[%d,%d,%d],\"e\":[%d,%d,%lu]}",
+                 sensors.seq,
+                 sensors.ax, sensors.ay, sensors.az,
+                 sensors.roll, sensors.pitch, sensors.yaw,
+                 sensors.alt, sensors.temp, sensors.press
+                 );
+
+        /* 3. ENVIA */
+        packetbuf_clear();
+        packetbuf_copyfrom(json_buffer, strlen(json_buffer));
+        broadcast_send(&bc);
+
+        /* 4. LOG (Isso é o que seu Dashboard vai ler da Serial) */
+        printf("%s\n", json_buffer);
+
+        leds_toggle(LEDS_GREEN);
+        etimer_reset(&periodic_timer);
+    }
+
+    PROCESS_END();
+}
