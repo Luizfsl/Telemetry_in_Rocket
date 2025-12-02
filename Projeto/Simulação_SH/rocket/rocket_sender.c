@@ -4,15 +4,10 @@
 #include "dev/leds.h"
 #include <stdio.h>
 #include <string.h>
-#include "sys/clock.h" // Necessário para pegar o tempo do sistema
+#include "sys/clock.h"
 
 /* Intervalo de envio (2 segundos) */
 #define SEND_INTERVAL (CLOCK_SECOND * 2)
-
-/* Tamanho do buffer.
- * CUIDADO: O limite seguro do 802.15.4 é ~100-110 bytes de payload.
- * Com os dados de tempo, estamos chegando perto do limite.
- */
 #define MAX_PAYLOAD_LEN 110 
 
 /* Estrutura de Dados (Sensores + Tempo) */
@@ -64,7 +59,7 @@ void simular_dados(RocketData *data, int seq_atual) {
     
     last_tick = now;
 
-    // --- 2. SIMULAÇÃO DE VOO (Igual ao anterior) ---
+    // --- 2. SIMULAÇÃO DE VOO ---
     // Fase 1: Subida
     if (seq_atual < 40) {
         data->az = 2500 + (random_rand() % 400); 
@@ -122,7 +117,7 @@ PROCESS_THREAD(rocket_sender_process, ev, data)
          * "t": [h,m,s,ms,dt] -> Tempo
          * "a": [x,y,z]       -> Aceleração
          * "g": [r,p,y]       -> Giroscópio
-         * "e": [alt,temp]    -> Ambiente (tirei pressao para caber melhor)
+         * "e": [alt,temp]    -> Ambiente
          */
         snprintf(json, sizeof(json), 
                  "{\"s\":%d,\"t\":[%d,%d,%d,%d,%d],\"a\":[%d,%d,%d],\"g\":[%d,%d,%d],\"e\":[%d,%d]}",
@@ -132,7 +127,6 @@ PROCESS_THREAD(rocket_sender_process, ev, data)
                  sensors.roll, sensors.pitch, sensors.yaw,
                  sensors.alt, sensors.temp
                  );
-                 // OBS: Se precisar muito da pressão, adicione no fim, mas cuidado com o tamanho > 100 bytes
 
         packetbuf_clear();
         packetbuf_copyfrom(json, strlen(json));
