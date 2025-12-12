@@ -7,7 +7,7 @@
 #include "sys/clock.h"
 
 /* Intervalo de envio (2 segundos) */
-#define SEND_INTERVAL (CLOCK_SECOND * 2)
+#define SEND_INTERVAL (CLOCK_SECOND * 1)
 #define MAX_PAYLOAD_LEN 110 
 
 /* Estrutura de Dados (Sensores + Tempo) */
@@ -38,55 +38,34 @@ static const struct broadcast_callbacks broadcast_call = { broadcast_recv };
 
 /* Função que simula os dados */
 void simular_dados(RocketData *data, int seq_atual) {
-    static float s_alt = 0;
-    static float s_vel = 0;
-    static clock_time_t last_tick = 0; // Para calcular o Delta T
-    
-    // --- 1. CÁLCULO DO TEMPO ---
-    unsigned long total_sec = clock_seconds(); // Segundos desde o boot
-    clock_time_t now = clock_time();           // Ticks atuais
+    static clock_time_t last_tick = 0;
+    unsigned long total_sec = clock_seconds();
+    clock_time_t now = clock_time();
 
     data->sys_hour = (total_sec / 3600) % 24;
-    data->sys_min = (total_sec / 60) % 60;
-    data->sys_sec = total_sec % 60;
-    
-    // Calcula milissegundos atuais (0 a 999)
-    data->sys_ms = (unsigned long)(now % CLOCK_SECOND) * 1000 / CLOCK_SECOND;
+    data->sys_min  = (total_sec / 60) % 60;
+    data->sys_sec  = total_sec % 60;
+    data->sys_ms   = (unsigned long)(now % CLOCK_SECOND) * 1000 / CLOCK_SECOND;
 
-    // Calcula Delta T (tempo desde o último pacote em ms)
-    if (last_tick == 0) data->delta_t = 0;
+    if(last_tick == 0) data->delta_t = 0;
     else data->delta_t = (unsigned long)(now - last_tick) * 1000 / CLOCK_SECOND;
-    
+
     last_tick = now;
 
-    // --- 2. SIMULAÇÃO DE VOO ---
-    // Fase 1: Subida
-    if (seq_atual < 40) {
-        data->az = 2500 + (random_rand() % 400); 
-        s_vel += 12.0;                           
-        data->ax = (random_rand() % 100) - 50;
-        data->ay = (random_rand() % 100) - 50;
-        data->roll = (random_rand() % 5);
-        data->pitch = 88 + (random_rand() % 4);
-        data->yaw = 0;
-    } 
-    // Fase 2: Descida
-    else {
-        data->az = 980; 
-        s_vel -= 4.0;   
-        data->ax = (random_rand() % 20) - 10;
-        data->ay = (random_rand() % 20) - 10;
-        data->roll = random_rand() % 360;
-        data->pitch = random_rand() % 90;
-        data->yaw = (data->yaw + 10) % 360;
-    }
+    data->ax = 10;
+    data->ay = 20;
+    data->az = 980;     // gravidade normal
 
-    s_alt += s_vel;
-    if (s_alt < 0) s_alt = 0;
-    
-    data->alt = (int16_t)s_alt;
-    data->press = 101325 - (data->alt * 12);
-    data->temp = 30 - (data->alt / 150);
+    data->roll  = 0;
+    data->pitch = 0;
+    data->yaw   = 0;
+
+    data->temp  = 25;        // temperatura fixa
+    data->press = 101325;    // pressão fixa
+    data->alt   = 100;       // altitude fixa (exemplo)
+
+
+    data->seq = seq_atual;
 }
 
 PROCESS_THREAD(rocket_sender_process, ev, data)
