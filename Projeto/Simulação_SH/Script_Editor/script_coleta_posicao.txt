@@ -1,0 +1,24 @@
+TIMEOUT(600000); // 10 minutos
+
+while (true) {
+  YIELD();
+
+  if (msg == null) continue;
+
+  var line = msg.trim();
+
+  if (line.equals("POS?")) {
+    var p = mote.getInterfaces().getPosition();
+
+    // Coordenadas em METROS (inteiro)
+    var x_m = Math.round(p.getXCoordinate());
+    var y_m = Math.round(p.getYCoordinate());
+    var z_m = Math.round(p.getZCoordinate());
+
+    // Debug no log do Script Editor
+    log.log("Reply POS to mote " + mote.getID() +
+            ": " + x_m + " " + y_m + " " + z_m + " (m)\n");
+
+    // Envia para o mote
+    write(mote, "POS " + x_m + " " + y_m + " " + z_m + "\n");
+  }

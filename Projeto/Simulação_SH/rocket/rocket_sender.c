@@ -2,42 +2,122 @@
 #include "net/rime/rime.h"
 #include "random.h"
 #include "dev/leds.h"
+#include "dev/serial-line.h"
 #include <stdio.h>
 #include <string.h>
 #include "sys/clock.h"
+#include <stdlib.h>  
 
-/* Intervalo de envio (2 segundos) */
-#define SEND_INTERVAL (CLOCK_SECOND * 1)
-#define MAX_PAYLOAD_LEN 110 
+/*
+ * Emulação LoRa-like (Cooja + MRM):
+ * - Airtime tabelado por SF (aprox. 100 bytes, BW=125kHz, CR=4/5)
+ * - "Rádio ocupado": não transmite novamente enquanto airtime não terminar
+ * - SF ajustado por fase do voo (tempo)
+ * - Captura posição real do COOJA via Script Editor (serial):
+ *     - mote imprime: "POS?"
+ *     - COOJA responde: "POS x y z" (cm)
+ */
 
-/* Estrutura de Dados (Sensores + Tempo) */
+/* Tick de verificação do loop */
+#define TICK_INTERVAL   (CLOCK_SECOND / 2)
+
+#define MAX_PAYLOAD_LEN 180
+
+/* ---------- Perfil LoRa-like ---------- */
+typedef enum {
+  SF7  = 7,
+  SF8  = 8,
+  SF9  = 9,
+  SF10 = 10,
+  SF11 = 11,
+  SF12 = 12
+} lora_sf_t;
+
+/* Airtime aproximado para ~100 bytes, BW=125kHz, CR=4/5 */
+static uint16_t lora_airtime_ms(lora_sf_t sf) {
+  switch(sf) {
+    case SF7:  return 56;
+    case SF8:  return 103;
+    case SF9:  return 185;
+    case SF10: return 371;
+    case SF11: return 742;
+    case SF12: return 1483;
+    default:   return 200;
+  }
+}
+
+/* SF por fase do voo */
+static lora_sf_t update_sf_by_flight_time(uint32_t t_sec) {
+  if(t_sec < 10) return SF7;
+  if(t_sec < 25) return SF8;
+  if(t_sec < 45) return SF9;
+  if(t_sec < 70) return SF10;
+  return SF11;
+}
+
+/* ---------- Telemetria ---------- */
 typedef struct {
-    // --- Tempo ---
     uint8_t sys_hour;
     uint8_t sys_min;
     uint8_t sys_sec;
     uint16_t sys_ms;
-    uint16_t delta_t; // Diferença de tempo entre pacotes
+    uint16_t delta_t;
 
-    // --- Sensores Físicos ---
-    int16_t ax, ay, az;       // Acelerômetro
-    int16_t roll, pitch, yaw; // Giroscópio
-    int16_t temp;             // Temperatura
-    uint32_t press;           // Pressão
-    int16_t alt;              // Altitude
-    int16_t seq;              // Sequência
+    int16_t ax, ay, az;
+    int16_t roll, pitch, yaw;
+    int16_t temp;
+    uint32_t press;
+    int16_t alt;
+    int16_t seq;
 } RocketData;
 
-PROCESS(rocket_sender_process, "Rocket Sender Time+Sensors");
+/* ---------- Posição vinda do COOJA (cm) ---------- */
+static int32_t pos_x_cm = 0;
+static int32_t pos_y_cm = 0;
+static int32_t pos_z_cm = 0;
+static uint8_t pos_valid = 0;
+
+static void parse_pos_line(const char *line) {
+  if(line == NULL) return;
+
+  /* Espera: "POS x y z" */
+  if(strncmp(line, "POS", 3) != 0) return;
+
+  /* Avança até depois de "POS" */
+  const char *p = line + 3;
+
+  /* Pula espaços */
+  while(*p == ' ' || *p == '\t') p++;
+
+  char *endptr;
+
+  long x = strtol(p, &endptr, 10);
+  if(endptr == p) return; 
+  p = endptr;
+
+  while(*p == ' ' || *p == '\t') p++;
+  long y = strtol(p, &endptr, 10);
+  if(endptr == p) return;
+  p = endptr;
+
+  while(*p == ' ' || *p == '\t') p++;
+  long z = strtol(p, &endptr, 10);
+  if(endptr == p) return;
+
+  pos_x_cm = (int32_t)x;
+  pos_y_cm = (int32_t)y;
+  pos_z_cm = (int32_t)z;
+  pos_valid = 1;
+}
+
+PROCESS(rocket_sender_process, "Rocket Sender Time+Sensors (LoRa-like + POS)");
 AUTOSTART_PROCESSES(&rocket_sender_process);
 
 static struct broadcast_conn bc;
-
 static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from) {}
 static const struct broadcast_callbacks broadcast_call = { broadcast_recv };
 
-/* Função que simula os dados */
-void simular_dados(RocketData *data, int seq_atual) {
+static void simular_dados(RocketData *data, int seq_atual) {
     static clock_time_t last_tick = 0;
     unsigned long total_sec = clock_seconds();
     clock_time_t now = clock_time();
@@ -54,68 +134,104 @@ void simular_dados(RocketData *data, int seq_atual) {
 
     data->ax = 10;
     data->ay = 20;
-    data->az = 980;     // gravidade normal
+    data->az = 980;
 
     data->roll  = 0;
     data->pitch = 0;
     data->yaw   = 0;
 
-    data->temp  = 25;        // temperatura fixa
-    data->press = 101325;    // pressão fixa
-    data->alt   = 100;       // altitude fixa (exemplo)
-
+    data->temp  = 25;
+    data->press = 101325;
+    data->alt   = 100;
 
     data->seq = seq_atual;
 }
 
 PROCESS_THREAD(rocket_sender_process, ev, data)
 {
-    static struct etimer periodic_timer;
+    static struct etimer tick_timer;
+    static struct etimer airtime_timer;
+
     static int seq_count = 0;
     static RocketData sensors;
+
+    static uint8_t radio_busy = 0;
+    static uint32_t start_sec = 0;
+    static lora_sf_t current_sf = SF9;
 
     PROCESS_EXITHANDLER(broadcast_close(&bc);)
     PROCESS_BEGIN();
 
-    printf("[Rocket] Iniciando com TEMPO e SENSORES...\n");
+    serial_line_init(); /* habilita recepção de linhas "POS ..." */
+    printf("[Rocket] Iniciando LoRa-like (airtime + data rate + POS via COOJA)...\n");
 
     broadcast_open(&bc, 129, &broadcast_call);
-    etimer_set(&periodic_timer, SEND_INTERVAL);
+
+    start_sec = clock_seconds();
+    etimer_set(&tick_timer, TICK_INTERVAL);
 
     while(1) {
-        PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&periodic_timer));
-        seq_count++;
-        sensors.seq = seq_count;
+        PROCESS_WAIT_EVENT();
 
-        simular_dados(&sensors, seq_count);
+        /* Recebe respostas do Script do COOJA */
+        if(ev == serial_line_event_message && data != NULL) {
+          parse_pos_line((const char *)data);
+        }
 
-        // Buffer para o JSON
-        char json[MAX_PAYLOAD_LEN];
-        
-        /* FORMATO JSON COMPACTO:
-         * "t": [h,m,s,ms,dt] -> Tempo
-         * "a": [x,y,z]       -> Aceleração
-         * "g": [r,p,y]       -> Giroscópio
-         * "e": [alt,temp]    -> Ambiente
-         */
-        snprintf(json, sizeof(json), 
-                 "{\"s\":%d,\"t\":[%d,%d,%d,%d,%d],\"a\":[%d,%d,%d],\"g\":[%d,%d,%d],\"e\":[%d,%d]}",
-                 sensors.seq,
-                 sensors.sys_hour, sensors.sys_min, sensors.sys_sec, sensors.sys_ms, sensors.delta_t,
-                 sensors.ax, sensors.ay, sensors.az,
-                 sensors.roll, sensors.pitch, sensors.yaw,
-                 sensors.alt, sensors.temp
-                 );
+        /* Libera rádio quando airtime terminar */
+        if(ev == PROCESS_EVENT_TIMER && data == &airtime_timer) {
+            radio_busy = 0;
+        }
 
-        packetbuf_clear();
-        packetbuf_copyfrom(json, strlen(json));
-        broadcast_send(&bc);
+        /* Tick periódico: decide se pode transmitir */
+        if(ev == PROCESS_EVENT_TIMER && data == &tick_timer) {
 
-        printf("%s\n", json);
+            uint32_t t_sec = clock_seconds() - start_sec;
+            current_sf = update_sf_by_flight_time(t_sec);
 
-        leds_toggle(LEDS_GREEN);
-        etimer_reset(&periodic_timer);
+            if(!radio_busy) {
+                seq_count++;
+                simular_dados(&sensors, seq_count);
+
+                /* Solicita posição AO COOJA (no instante de envio) */
+                printf("POS?\n");
+
+                char json[MAX_PAYLOAD_LEN];
+
+                snprintf(json, sizeof(json),
+                    "{\"s\":%d,\"t\":[%d,%d,%d,%d,%d],\"p\":[%ld,%ld,%ld],\"a\":[%d,%d,%d],\"g\":[%d,%d,%d],\"e\":[%d,%d]}",
+                    sensors.seq,
+                    sensors.sys_hour, sensors.sys_min, sensors.sys_sec, sensors.sys_ms, sensors.delta_t,
+                    (long)(pos_valid ? pos_x_cm : 0),
+                    (long)(pos_valid ? pos_y_cm : 0),
+                    (long)(pos_valid ? pos_z_cm : 0),
+                    sensors.ax, sensors.ay, sensors.az,
+                    sensors.roll, sensors.pitch, sensors.yaw,
+                    sensors.alt, sensors.temp
+                );
+
+                packetbuf_clear();
+                packetbuf_copyfrom(json, strlen(json));
+                broadcast_send(&bc);
+
+                uint16_t airtime_ms = lora_airtime_ms(current_sf);
+                radio_busy = 1;
+                etimer_set(&airtime_timer, (clock_time_t)((airtime_ms * CLOCK_SECOND) / 1000));
+
+                printf("[Rocket] t=%lus TX SF%d airtime=%dms bytes=%u payload=%s\n",
+                       (unsigned long)t_sec,
+                       (int)current_sf,
+                       (int)airtime_ms,
+                       (unsigned)strlen(json),
+                       json);
+
+                leds_toggle(LEDS_GREEN);
+            }
+
+            etimer_reset(&tick_timer);
+        }
     }
 
     PROCESS_END();
 }
+
