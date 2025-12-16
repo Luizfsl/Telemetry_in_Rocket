@@ -2,6 +2,8 @@
 
 >(Clarification: Fredrik Osterlind is the author of the mobility-plugin and I have his permission to attach it and distribute it in this Contiki project.)
 
+> This is the link of his original mobility folder https://sourceforge.net/p/contikiprojects/code/HEAD/tree/sics.se/mobility/ 
+
 When I (Marcus Lunden) wanted to evaluate a communication primitive that I hypothesized being particularly well suited for low latency neighbor discovery, I needed a way to make the nodes in the simulation move. Unfortunately, there is no built in function for this in the version of COOJA that can be obtained from the web site (www.sics.se/contiki) or the Contiki CVS. However, Fredrik Osterlind, the main author of COOJA had an experimental plugin called Mobility. 
 
 As input, it takes line separated position data in the following format:
@@ -38,37 +40,42 @@ However, a small default position.dat is included with position data for only on
 ### Usage:
 #### Setting up the environment
     
-  * put the mobility-folder in your ```contiki-folder/tools/cooja/apps/```
-  * put the movement data file (positions.dat) in that folder,
+  1. Put the mobility-folder in your ```contiki-folder/tools/cooja/apps/```
+  2. Put the movement data file (positions.dat) in that folder,
     ``` contiki-folder/tools/cooja/apps/mobility/positions.dat ```
-  * build the plugin
+     - in case of you took the original mobility folder, you need to: 
+       - Go to the cooja.config file of the mobility and replace the ``` se.sics.cooja.GUI ``` with ``` org.contikios.cooja.Cooja ``` (that must be equal in cooja.cofig of another folders in apps of Cooja)
+       - Go to the Mobility.java file of the mobility/java and replace
+         - ``` se.sics.cooja ``` with ``` org.contikios.cooja ```
+         - ``` GUI ``` with ``` Cooja ``` 
+       - Go to the build.xml file of the mobility folder and replace
+         - ``` ../../../contiki-2.x/tools/cooja ``` with ``` ../.. ```
+       - obs.: if the version of your linus is superior of "Ubuntu 14.04" or superior of "Ubuntu 20.04", you need to replace the ``` MessageList ``` with ``` MessageListUI ```
+  3. Build the plugin
       ```
       cd contiki-folder/tools/cooja/apps/mobility
-      ant jar
+      sudo ant jar
       ```
-  * start cooja:
+  4. start cooja:
       ```
       cd contiki-folder/tools/cooja
-      ant run
+      sudo ant run
       ```
-  
-  >obs.: depois daqui eu tive que ir em cooja extentions -> adicionar um arquivo java de mobility -> clicar em Apply for this section depois ir lá de novo e savar. 
-  
-  >obs.: verique se o pluggin foi colocado indo em Tools, aparece Mobility lá.
-  * create a new simulation
+      - Go to the Settings -> Cooja extensions
+         - Add the mobility path -> click on "Apply for this section" -> go back in the Cooja extensions -> clink on Save and confirm
+      - obs.: verify if the pluggin is on, seeing in Tools, apers Mobility there. 
+  5. create a new simulation
       ```file/new simulation```
-  * setup the project directories
+  6. setup the project directories
       ```
       settings/Manage project directories/Enter path manually:
         ../apps/mobility/
       ```
       Save as default
-  >obs.: não fiz essas últimas duas etapas. 
-  * quit COOJA
+  >obs.: não fiz essa última etapa. 
+  7. quit COOJA
 
 #### Changing the position.dat
->obs.: também não fiz exatamente o que é descrito daqui pra baixo, fiz manualmente as posições do position.dat e adicionei ele a simulação com clicando no plugging em Tools. 
-  
   Should you want to change to another position data file, then do this:
 
   * Quit Cooja

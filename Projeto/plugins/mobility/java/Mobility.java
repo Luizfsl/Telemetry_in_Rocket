@@ -46,7 +46,7 @@ import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
 import org.contikios.cooja.TimeEvent;
 import org.contikios.cooja.VisPlugin;
-import org.contikios.cooja.dialogs.MessageListUI;
+import org.contikios.cooja.dialogs.MessageList;
 import org.contikios.cooja.interfaces.Position;
 import org.contikios.cooja.util.StringUtils;
 
@@ -67,14 +67,12 @@ public class Mobility extends VisPlugin {
 
   private File filePositions = null;
 
-  //MessageListUI eh a implementacao concreta de MessageList
-  private MessageListUI log = new MessageListUI();
+  private MessageList log = new MessageList();
 
-  public Mobility(Simulation simulation, final Cooja gui) {
-    super("Mobility", gui, false);
+  public Mobility(Simulation simulation, final Cooja Cooja) {
+    super("Mobility", Cooja, false);
     this.simulation = simulation;
 
-    //nao consegue encontrar o simbolo .addPopup...
     log.addPopupMenuItem(null, true); /* Create message list popup */
     add(new JScrollPane(log));
 
