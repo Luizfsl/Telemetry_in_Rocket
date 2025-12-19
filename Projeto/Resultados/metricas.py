@@ -16,7 +16,7 @@ RADIO_MSG_PATH = Path("dadosRadioMessage.txt")  # seu export do Radio Messages
 OUT_DIR = Path("cooja_metrics_out")
 OUT_DIR.mkdir(exist_ok=True)
 
-# Posição da base no cenário (ajuste se necessário)
+# Posição da base no cenário
 BASE_XYZ = (0.0, 0.0, 0.0)
 
 # IDs dos motes (ajuste se necessário)
