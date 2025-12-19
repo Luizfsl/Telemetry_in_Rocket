@@ -7,21 +7,23 @@ de comunicação e coleta/transmissão de dados (Contiki/Cooja), incluindo scrip
 
 ## Estrutura do repositório
 
+```text
 Telemetry_in_Rocket/
 ├─ Projeto/
-│  ├─ Resultados/         
-|      ├─ cooja_metrics_out/
-|      ├─ dados_Coletados/
-|      ├─ metricas.py
-│  ├─ Simulação_SH/       
-|      ├─ Script_Editor/
-|      ├─ base/
-|      ├─ rocket/
-|      ├─ Simulation_sky.csc
-│  ├─ plugins/mobility    
-|      ├─ java/
-|      ├─ lib/
+│  ├─ Resultados/
+│  │  ├─ cooja_metrics_out/
+│  │  ├─ dados_Coletados/
+│  │  ├─ metricas.py
+│  │  └─ Simulação_SH/
+│  ├─ Script_Editor/
+│  ├─ base/
+│  ├─ rocket/
+│  ├─ Simulation_sky.csc
+│  └─ plugins/mobility/
+│     ├─ java/
+│     └─ lib/
 └─ README.md
+```
 
 ### Resultados/
 
