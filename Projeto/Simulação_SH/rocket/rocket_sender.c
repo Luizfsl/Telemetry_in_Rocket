@@ -71,10 +71,10 @@ typedef struct {
     int16_t seq;
 } RocketData;
 
-/* ---------- Posição vinda do COOJA (cm) ---------- */
-static int32_t pos_x_cm = 0;
-static int32_t pos_y_cm = 0;
-static int32_t pos_z_cm = 0;
+/* ---------- Posição vinda do COOJA (m) ---------- */
+static int32_t pos_x_m = 0;
+static int32_t pos_y_m = 0;
+static int32_t pos_z_m = 0;
 static uint8_t pos_valid = 0;
 
 static void parse_pos_line(const char *line) {
@@ -202,9 +202,9 @@ PROCESS_THREAD(rocket_sender_process, ev, data)
                     "{\"s\":%d,\"t\":[%d,%d,%d,%d,%d],\"p\":[%ld,%ld,%ld],\"a\":[%d,%d,%d],\"g\":[%d,%d,%d],\"e\":[%d,%d]}",
                     sensors.seq,
                     sensors.sys_hour, sensors.sys_min, sensors.sys_sec, sensors.sys_ms, sensors.delta_t,
-                    (long)(pos_valid ? pos_x_cm : 0),
-                    (long)(pos_valid ? pos_y_cm : 0),
-                    (long)(pos_valid ? pos_z_cm : 0),
+                    (long)(pos_valid ? pos_x_m : 0),
+                    (long)(pos_valid ? pos_y_m : 0),
+                    (long)(pos_valid ? pos_z_m : 0),
                     sensors.ax, sensors.ay, sensors.az,
                     sensors.roll, sensors.pitch, sensors.yaw,
                     sensors.alt, sensors.temp

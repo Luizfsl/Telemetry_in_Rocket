@@ -7,32 +7,23 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
-# =========================
-# CONFIG
-# =========================
 MOTE_OUTPUT_PATH = Path("moteOutput.txt")
-RADIO_MSG_PATH = Path("dadosRadioMessage.txt")  # seu export do Radio Messages
+RADIO_MSG_PATH = Path("dadosRadioMessage.txt")  
 OUT_DIR = Path("cooja_metrics_out")
 OUT_DIR.mkdir(exist_ok=True)
 
 # Posição da base no cenário
 BASE_XYZ = (0.0, 0.0, 0.0)
 
-# IDs dos motes (ajuste se necessário)
+# IDs dos motes 
 ROCKET_ID = 1
 BASE_ID = 2
 
-# Binning de distância (metros se você manda p em metros)
+# Binning de distância 
 DIST_BIN_SIZE = 250
 
-# Preferir Radio Messages para “confirmar” RX (recomendado)
 USE_RADIO_MESSAGES_FOR_RX = True
 
-
-# =========================
-# HELPERS
-# =========================
 def parse_sim_ts_mmss(ts: str) -> float:
     """Converte 'MM:SS.mmm' para segundos float."""
     mm, rest = ts.split(":")
@@ -55,11 +46,6 @@ def safe_json_loads(s: str):
 
 
 def decode_hex_payload_to_json(hex_blob: str):
-    """
-    Recebe blob hex com espaços (ex: 'ABFFFF00 01005A81 ...'),
-    converte para bytes, acha '{...}' e tenta json.loads.
-    Retorna (payload_dict, payload_str) ou (None, None).
-    """
     hx = re.sub(r"[^0-9A-Fa-f]", "", hex_blob)
     if len(hx) < 2:
         return None, None
@@ -85,11 +71,6 @@ def decode_hex_payload_to_json(hex_blob: str):
 
 
 def parse_radio_time_to_seconds(t0: str) -> float:
-    """
-    No Radio Messages, a 1ª coluna costuma ser contador em ms.
-    Ex: 29667 -> 29.667s
-    Se o seu arquivo estiver em outra unidade, ajuste aqui.
-    """
     try:
         v = float(t0)
     except Exception:
@@ -101,7 +82,6 @@ def parse_radio_time_to_seconds(t0: str) -> float:
 
 
 def compute_blackout_ranges(missing_seqs):
-    """Agrupa sequências faltantes em ranges contínuos (start,end)."""
     if not missing_seqs:
         return []
     missing = sorted(missing_seqs)
@@ -118,7 +98,6 @@ def compute_blackout_ranges(missing_seqs):
 
 
 def to_py(v):
-    """Converte tipos numpy/pandas para tipos nativos do Python (JSON-safe)."""
     if v is None:
         return None
     if isinstance(v, (np.integer,)):
@@ -133,17 +112,12 @@ def to_py(v):
 
 
 def dict_to_py(d):
-    """Recursivo: converte dict/list com numpy/pandas para JSON-safe."""
     if isinstance(d, dict):
         return {k: dict_to_py(v) for k, v in d.items()}
     if isinstance(d, list):
         return [dict_to_py(x) for x in d]
     return to_py(d)
 
-
-# =========================
-# REGEX (moteOutput)
-# =========================
 LINE_RE = re.compile(r"^(?P<ts>\d{2}:\d{2}\.\d{3})\s+ID:(?P<id>\d+)\s+(?P<msg>.*)$")
 TX_RE = re.compile(
     r"\[Rocket\]\s+t=(?P<tsec>\d+)s\s+TX\s+SF(?P<sf>\d+)\s+airtime=(?P<air>\d+)ms\s+bytes=(?P<bytes>\d+)\s+payload=(?P<payload>\{.*\})"
@@ -152,10 +126,6 @@ RX_RE = re.compile(
     r"\[Base\]\s+Recebido de\s+(?P<src>\d+\.\d+)\s+->\s+\"(?P<payload>\{.*\})\"\s+\(tamanho=(?P<bytes>\d+)\s+bytes\)"
 )
 
-
-# =========================
-# PARSE moteOutput (TX + RX “lógico”)
-# =========================
 tx_rows = []
 rx_rows_mote = []
 
@@ -230,10 +200,6 @@ if len(rx_mote_df):
     rx_mote_df["seq"] = rx_mote_df["seq"].astype(int)
     rx_mote_df["dist"] = rx_mote_df.apply(lambda r: dist_xyz(r["x"], r["y"], r["z"]), axis=1)
 
-
-# =========================
-# PARSE Radio Messages (RX “físico”)
-# =========================
 radio_rows = []
 rx_rows_radio = []
 
@@ -243,8 +209,6 @@ if RADIO_MSG_PATH.exists():
         if not line:
             continue
 
-        # Exemplo esperado:
-        # time  src  dst_or_-  len: ... HEX...
         parts = re.split(r"\s+", line)
         if len(parts) < 6:
             continue
@@ -307,15 +271,8 @@ if len(rx_radio_df):
     rx_radio_df = rx_radio_df.sort_values("seq")
     rx_radio_df["dist"] = rx_radio_df.apply(lambda r: dist_xyz(r["x"], r["y"], r["z"]), axis=1)
 
-
-# =========================
-# Decide fonte de RX
-# =========================
 rx_df = rx_radio_df if (USE_RADIO_MESSAGES_FOR_RX and len(rx_radio_df)) else rx_mote_df
 
-# =========================
-# MERGE TX + RX por seq
-# =========================
 if not len(tx_df):
     raise SystemExit("Não achei TX no moteOutput.txt. Verifique se ele contém as linhas [Rocket] t=... TX ...")
 
@@ -327,10 +284,7 @@ rx_merge = (
 merged = tx_df.merge(rx_merge, on="seq", how="left")
 merged["delivered"] = ~merged["rx_time_s"].isna()
 
-
-# =========================
 # METRICS
-# =========================
 tx_count = len(tx_df)
 rx_count = int(merged["delivered"].sum())
 
@@ -390,10 +344,6 @@ pdr_by_bin = (
 ).fillna(0).reset_index()
 pdr_by_bin.columns = ["dist_bin", "pdr"]
 
-
-# =========================
-# SAVE FILES
-# =========================
 merged.to_csv(OUT_DIR / "packets_merged.csv", index=False)
 pdr_by_bin.to_csv(OUT_DIR / "pdr_by_distance_bin.csv", index=False)
 
@@ -417,10 +367,7 @@ summary = dict_to_py(summary)
     encoding="utf-8"
 )
 
-
-# =========================
 # PLOTS
-# =========================
 # 1) PDR vs distance
 plt.figure()
 bin_mid = []
@@ -471,7 +418,7 @@ plt.tight_layout()
 plt.savefig(OUT_DIR / "blackouts_timeline.png", dpi=200)
 plt.close()
 
-# 4) Blackout ranges (Gantt simples)
+# 4) Blackout ranges 
 plt.figure(figsize=(10, 3))
 if blackouts:
     y = 0
