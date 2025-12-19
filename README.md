@@ -9,7 +9,7 @@ de comunicação e coleta/transmissão de dados (Contiki/Cooja), incluindo scrip
 
 Telemetry_in_Rocket/
 ├─ Projeto/
-│  ├─ Resultados/         # Pasta referente a obtenção de resultados obtidos pelo COOJA
+│  ├─ Resultados/         
 |      ├─ cooja_metrics_out/
 |      ├─ dados_Coletados/
 |      ├─ metricas.py
@@ -18,7 +18,7 @@ Telemetry_in_Rocket/
 |      ├─ base/
 |      ├─ rocket/
 |      ├─ Simulation_sky.csc
-│  ├─ plugins/mobility    # plugin/extensão de mobilidade no Contiki/Cooja
+│  ├─ plugins/mobility    
 |      ├─ java/
 |      ├─ lib/
 └─ README.md
